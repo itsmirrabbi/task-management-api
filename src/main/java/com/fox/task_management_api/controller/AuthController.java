@@ -4,6 +4,7 @@ package com.fox.task_management_api.controller;
 import com.fox.task_management_api.dto.LoginRequest;
 import com.fox.task_management_api.model.User;
 import com.fox.task_management_api.repository.UserRepository;
+import com.fox.task_management_api.security.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -13,9 +14,12 @@ import java.util.Optional;
 
 @RestController
 public class AuthController {
+    private final JwtService jwtService;
+
     private final UserRepository userRepository;
 
-    public AuthController(UserRepository userRepository) {
+    public AuthController(JwtService jwtService, UserRepository userRepository) {
+        this.jwtService = jwtService;
         this.userRepository = userRepository;
     }
 
@@ -28,9 +32,10 @@ public class AuthController {
     @PostMapping("/login")
     public String login(@RequestBody LoginRequest  request)
     {
+
         Optional<User>user = userRepository.findByUsername(request.getUsername());
         if(user.isPresent() && user.get().getPassword().equals(request.getPassword()))
-            return "Login successful";
+            return jwtService.generateToken(user.get().getUsername());
         return "Invalid username or password";
     }
 
