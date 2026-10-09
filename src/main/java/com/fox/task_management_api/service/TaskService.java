@@ -63,4 +63,14 @@ public class TaskService {
         taskRepository.save(existingTask);
         return existingTask;
     }
+
+
+    public Task getTaskById(Long id) {
+        String username = getCurrentUsername();
+
+        return taskRepository
+                .findByIdAndUser_Username(id, username)
+                .orElseThrow(() ->
+                        new RuntimeException("Task not found"));
+    }
 }
