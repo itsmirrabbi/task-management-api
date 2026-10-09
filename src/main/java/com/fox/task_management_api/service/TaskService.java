@@ -48,4 +48,19 @@ public class TaskService {
 
         return taskRepository.findByUser_Username(username);
     }
+
+    public Task updateTask(Long id, Task updatedTask) {
+        String username = getCurrentUsername();
+
+        Task existingTask = taskRepository
+                .findByIdAndUser_Username(id, username)
+                .orElseThrow(() ->
+                        new RuntimeException("Task not found"));
+
+        existingTask.setTitle(updatedTask.getTitle());
+        existingTask.setDescription(updatedTask.getDescription());
+        existingTask.setCompleted(updatedTask.isCompleted());
+        taskRepository.save(existingTask);
+        return existingTask;
+    }
 }
