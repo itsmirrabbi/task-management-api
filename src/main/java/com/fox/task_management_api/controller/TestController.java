@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class TestController {
 
-    @GetMapping("/tasks")
+    @GetMapping("/task")
     public String tasks() {
         return "You are authenticated!";
     }
