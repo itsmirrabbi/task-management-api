@@ -5,7 +5,6 @@ import com.fox.task_management_api.dto.LoginRequest;
 import com.fox.task_management_api.model.User;
 import com.fox.task_management_api.repository.UserRepository;
 import com.fox.task_management_api.security.JwtService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;

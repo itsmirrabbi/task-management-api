@@ -5,8 +5,10 @@ import com.fox.task_management_api.model.Task;
 import com.fox.task_management_api.model.User;
 import com.fox.task_management_api.repository.TaskRepository;
 import com.fox.task_management_api.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -48,4 +50,44 @@ public class TaskService {
 
         return taskRepository.findByUser_Username(username);
     }
+
+    public Task updateTask(Long id, Task updatedTask) {
+        String username = getCurrentUsername();
+
+        Task existingTask = taskRepository
+                .findByIdAndUser_Username(id, username)
+                .orElseThrow(() ->
+                        new RuntimeException("Task not found"));
+
+        existingTask.setTitle(updatedTask.getTitle());
+        existingTask.setDescription(updatedTask.getDescription());
+        existingTask.setCompleted(updatedTask.isCompleted());
+        taskRepository.save(existingTask);
+        return existingTask;
+    }
+
+
+    public Task getTaskById(Long id) {
+        String username = getCurrentUsername();
+
+        return taskRepository
+                .findByIdAndUser_Username(id, username)
+                .orElseThrow(() ->
+                        new RuntimeException("Task not found"));
+    }
+
+
+    public void deleteTask(Long id) {
+        String username = getCurrentUsername();
+        Task existingTask = taskRepository
+                .findByIdAndUser_Username(id, username)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Task not found"
+                        ));
+        taskRepository.delete(existingTask);
+    }
+
+
 }
