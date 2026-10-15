@@ -1,11 +1,14 @@
 
 package com.fox.task_management_api.controller;
 
-import com.fox.task_management_api.model.Task;
+import com.fox.task_management_api.dto.CreateTaskRequest;
+import com.fox.task_management_api.dto.TaskResponse;
+import com.fox.task_management_api.dto.UpdateTaskRequest;
 import com.fox.task_management_api.service.TaskService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -20,47 +23,34 @@ public class TaskController {
     }
 
     @PostMapping
-    public Task createTask(@RequestBody Task task) {
-        return taskService.createTask(task);
+    public ResponseEntity<TaskResponse> createTask(
+            @Valid @RequestBody CreateTaskRequest request) {
+
+        TaskResponse response = taskService.createTask(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
-    public List<Task> getMyTasks() {
+    public List<TaskResponse> getMyTasks() {
         return taskService.getMyTasks();
     }
 
     @PutMapping("/{id}")
-    public Task updateTask(
+    public TaskResponse updateTask(
             @PathVariable Long id,
-            @RequestBody Task task) {
-        return taskService.updateTask(id, task);
-    }
+            @Valid @RequestBody UpdateTaskRequest request) {
 
+        return taskService.updateTask(id, request);
+    }
 
     @GetMapping("/{id}")
-    public Task getTaskById(@PathVariable Long id) {
+    public TaskResponse getTaskById(@PathVariable Long id) {
         return taskService.getTaskById(id);
-    }
-
-    // We added this handler to explicitly return the HTTP status code and error
-    // message from ResponseStatusException, so Postman receives "Task not found"
-    // with a 404 status instead of the unexpected response we saw earlier.
-    // Normally, Spring handles ResponseStatusException automatically, so this
-    // handler is not required in a typical Spring Boot application.
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<String> handleResponseStatusException(
-            ResponseStatusException ex) {
-
-        return ResponseEntity
-                .status(ex.getStatusCode())
-                .body(ex.getReason());
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteTask(@PathVariable Long id) {
         taskService.deleteTask(id);
-
         return ResponseEntity.ok("Task deleted successfully");
     }
-
 }

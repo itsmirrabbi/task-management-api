@@ -1,6 +1,8 @@
-
 package com.fox.task_management_api.service;
 
+import com.fox.task_management_api.dto.CreateTaskRequest;
+import com.fox.task_management_api.dto.TaskResponse;
+import com.fox.task_management_api.dto.UpdateTaskRequest;
 import com.fox.task_management_api.model.Task;
 import com.fox.task_management_api.model.User;
 import com.fox.task_management_api.repository.TaskRepository;
@@ -8,6 +10,7 @@ import com.fox.task_management_api.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -32,62 +35,92 @@ public class TaskService {
                 .getName();
     }
 
-    public Task createTask(Task task) {
+    private TaskResponse toTaskResponse(Task task) {
+        return new TaskResponse(
+                task.getId(),
+                task.getTitle(),
+                task.getDescription(),
+                task.isCompleted()
+        );
+    }
+
+    @Transactional
+    public TaskResponse createTask(CreateTaskRequest request) {
         String username = getCurrentUsername();
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() ->
-                        new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found"
+                ));
 
+        Task task = new Task();
+        task.setTitle(request.getTitle());
+        task.setDescription(request.getDescription());
         task.setUser(user);
-        taskRepository.save(task);
 
-        return task;
+        Task savedTask = taskRepository.save(task);
+
+        return toTaskResponse(savedTask);
     }
 
-    public List<Task> getMyTasks() {
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getMyTasks() {
         String username = getCurrentUsername();
 
-        return taskRepository.findByUser_Username(username);
+        return taskRepository.findByUser_Username(username)
+                .stream()
+                .map(task->toTaskResponse(task))
+                .toList();
     }
 
-    public Task updateTask(Long id, Task updatedTask) {
+    @Transactional
+    public TaskResponse updateTask(
+            Long id,
+            UpdateTaskRequest request) {
         String username = getCurrentUsername();
 
         Task existingTask = taskRepository
                 .findByIdAndUser_Username(id, username)
-                .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Task not found"
+                ));
 
-        existingTask.setTitle(updatedTask.getTitle());
-        existingTask.setDescription(updatedTask.getDescription());
-        existingTask.setCompleted(updatedTask.isCompleted());
-        taskRepository.save(existingTask);
-        return existingTask;
+        existingTask.setTitle(request.getTitle());
+        existingTask.setDescription(request.getDescription());
+        existingTask.setCompleted(request.getCompleted());
+
+        Task updatedTask = taskRepository.save(existingTask);
+
+        return toTaskResponse(updatedTask);
     }
 
-
-    public Task getTaskById(Long id) {
+    @Transactional(readOnly = true)
+    public TaskResponse getTaskById(Long id) {
         String username = getCurrentUsername();
 
-        return taskRepository
+        Task task = taskRepository
                 .findByIdAndUser_Username(id, username)
-                .orElseThrow(() ->
-                        new RuntimeException("Task not found"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Task not found"
+                ));
+
+        return toTaskResponse(task);
     }
 
-
+    @Transactional
     public void deleteTask(Long id) {
         String username = getCurrentUsername();
+
         Task existingTask = taskRepository
                 .findByIdAndUser_Username(id, username)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Task not found"
-                        ));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Task not found"
+                ));
+
         taskRepository.delete(existingTask);
     }
-
-
 }
