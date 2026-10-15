@@ -8,6 +8,7 @@ import com.fox.task_management_api.model.User;
 import com.fox.task_management_api.repository.TaskRepository;
 import com.fox.task_management_api.repository.UserRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,12 +29,24 @@ public class TaskService {
         this.userRepository = userRepository;
     }
 
+
     private String getCurrentUsername() {
-        return SecurityContextHolder
+        var authentication = SecurityContextHolder
                 .getContext()
-                .getAuthentication()
-                .getName();
+                .getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Authentication required"
+            );
+        }
+
+        return authentication.getName();
     }
+
 
     private TaskResponse toTaskResponse(Task task) {
         return new TaskResponse(
