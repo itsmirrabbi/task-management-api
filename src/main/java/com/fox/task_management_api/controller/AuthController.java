@@ -51,6 +51,9 @@ public class AuthController {
             return jwtService.generateToken(user.get().getUsername());
         }
 
-        return "Invalid username or password";
+        throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Invalid username or password"
+        );
     }
 }
