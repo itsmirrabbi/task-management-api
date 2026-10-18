@@ -6,7 +6,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 @Configuration
 public class SecurityConfig {
 
@@ -39,6 +40,25 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 )
 
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
+                            String body = """
+                    {
+                        "status": 401,
+                        "error": "Unauthorized",
+                        "message": "Authentication required",
+                        "path": "%s"
+                    }
+                    """.formatted(request.getRequestURI());
+
+                            response.getWriter().write(body);
+                        })
+                )
+
                 .build();
     }
+
 }
