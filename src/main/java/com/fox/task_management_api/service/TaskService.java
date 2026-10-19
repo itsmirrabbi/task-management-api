@@ -7,6 +7,9 @@ import com.fox.task_management_api.model.Task;
 import com.fox.task_management_api.model.User;
 import com.fox.task_management_api.repository.TaskRepository;
 import com.fox.task_management_api.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -78,13 +81,12 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
-    public List<TaskResponse> getMyTasks() {
+    public Page<TaskResponse> getMyTasks(int page, int size) {
         String username = getCurrentUsername();
 
-        return taskRepository.findByUser_Username(username)
-                .stream()
-                .map(task->toTaskResponse(task))
-                .toList();
+        Pageable pageable = PageRequest.of(page, size);
+
+     return taskRepository.findByUser_Username(username, pageable).map(this::toTaskResponse);
     }
 
     @Transactional

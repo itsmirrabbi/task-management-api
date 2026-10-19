@@ -6,11 +6,10 @@ import com.fox.task_management_api.dto.TaskResponse;
 import com.fox.task_management_api.dto.UpdateTaskRequest;
 import com.fox.task_management_api.service.TaskService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/tasks")
@@ -31,8 +30,11 @@ public class TaskController {
     }
 
     @GetMapping
-    public List<TaskResponse> getMyTasks() {
-        return taskService.getMyTasks();
+    public Page<TaskResponse> getMyTasks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        return taskService.getMyTasks(page, size);
     }
 
     @PutMapping("/{id}")
