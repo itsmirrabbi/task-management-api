@@ -17,8 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-
 @Service
 public class TaskService {
 
@@ -56,7 +54,9 @@ public class TaskService {
                 task.getId(),
                 task.getTitle(),
                 task.getDescription(),
-                task.isCompleted()
+                task.isCompleted(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
         );
     }
 
@@ -86,7 +86,7 @@ public class TaskService {
 
         Pageable pageable = PageRequest.of(page, size);
 
-     return taskRepository.findByUser_Username(username, pageable).map(this::toTaskResponse);
+        return taskRepository.findByUser_Username(username, pageable).map(this::toTaskResponse);
     }
 
     @Transactional
