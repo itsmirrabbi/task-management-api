@@ -7,6 +7,7 @@ import com.fox.task_management_api.model.Task;
 import com.fox.task_management_api.model.User;
 import com.fox.task_management_api.repository.TaskRepository;
 import com.fox.task_management_api.repository.UserRepository;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -61,7 +62,7 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponse createTask(CreateTaskRequest request) {
+    public TaskResponse createTask(@NonNull CreateTaskRequest request) {
         String username = getCurrentUsername();
 
         User user = userRepository.findByUsername(username)
