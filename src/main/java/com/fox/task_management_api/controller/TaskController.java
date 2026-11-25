@@ -42,18 +42,29 @@ public class TaskController {
 
     @Operation(
             summary = "Get my tasks",
-            description = "Returns a paginated list of tasks belonging to the authenticated user."
+            description = "Returns a paginated list of tasks belonging to the authenticated user. "
+                    + "Optionally filters by completion status and supports sorting."
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Tasks retrieved successfully"),
-            @ApiResponse(responseCode = "401", description = "Unauthorized")
+            @ApiResponse(responseCode = "401", description = "Unauthorized"),
+            @ApiResponse(responseCode = "400", description = "Invalid pagination or sorting parameters"),
     })
     @GetMapping
     public Page<TaskResponse> getMyTasks(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Boolean completed,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
 
-        return taskService.getMyTasks(page, size);
+        return taskService.getMyTasks(
+                page,
+                size,
+                completed,
+                sortBy,
+                direction
+        );
     }
 
     @Operation(

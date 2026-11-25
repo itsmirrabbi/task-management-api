@@ -11,13 +11,11 @@ import com.fox.task_management_api.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +26,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -322,6 +321,241 @@ public class TaskServiceTest {
                 eq(username),
                 any(Pageable.class)
         );
+    }
+
+    @Test
+    void getMyTasks_shouldReturnCompletedTasks_whenCompletedIsTrue() {
+
+        // Arrange
+        String username = "testuser";
+        int page = 0;
+        int size = 10;
+
+        authenticateAs(username);
+
+        Task task = createTask(
+                1L,
+                "Completed Task",
+                "Task description",
+                true
+        );
+
+        Page<Task> taskPage = new PageImpl<>(
+                List.of(task),
+                PageRequest.of(page, size),
+                1
+        );
+
+        when(taskRepository.findByUser_UsernameAndCompleted(
+                eq(username),
+                eq(true),
+                any(Pageable.class)
+        )).thenReturn(taskPage);
+
+        // Act
+        Page<TaskResponse> response =
+                taskService.getMyTasks(page, size, true);
+
+        // Assert
+        assertEquals(1, response.getTotalElements());
+        assertEquals("Completed Task", response.getContent().get(0).getTitle());
+        assertTrue(response.getContent().get(0).isCompleted());
+
+        verify(taskRepository).findByUser_UsernameAndCompleted(
+                eq(username),
+                eq(true),
+                any(Pageable.class)
+        );
+    }
+
+    @Test
+    void getMyTasks_shouldReturnIncompleteTasks_whenCompletedIsFalse() {
+
+        // Arrange
+        String username = "testuser";
+        int page = 0;
+        int size = 10;
+
+        authenticateAs(username);
+
+        Task task = createTask(
+                2L,
+                "Incomplete Task",
+                "Task description",
+                false
+        );
+
+        Page<Task> taskPage = new PageImpl<>(
+                List.of(task),
+                PageRequest.of(page, size),
+                1
+        );
+
+        when(taskRepository.findByUser_UsernameAndCompleted(
+                eq(username),
+                eq(false),
+                any(Pageable.class)
+        )).thenReturn(taskPage);
+
+        // Act
+        Page<TaskResponse> response =
+                taskService.getMyTasks(page, size, false);
+
+        // Assert
+        assertEquals(1, response.getTotalElements());
+        assertEquals("Incomplete Task", response.getContent().get(0).getTitle());
+        assertFalse(response.getContent().get(0).isCompleted());
+
+        verify(taskRepository).findByUser_UsernameAndCompleted(
+                eq(username),
+                eq(false),
+                any(Pageable.class)
+        );
+    }
+
+
+    @Test
+    void getMyTasks_shouldUseDefaultSorting_whenSortParametersAreNotProvided() {
+        // Arrange
+        String username = "testuser";
+        int page = 0;
+        int size = 10;
+
+        authenticateAs(username);
+
+        Page<Task> taskPage = new PageImpl<>(
+                List.of(),
+                PageRequest.of(page, size),
+                0
+        );
+
+        when(taskRepository.findByUser_Username(
+                eq(username),
+                any(Pageable.class)
+        )).thenReturn(taskPage);
+
+        // Act
+        taskService.getMyTasks(page, size);
+
+        // Assert
+        verify(taskRepository).findByUser_Username(
+                eq(username),
+                argThat(pageable -> {
+                    Sort.Order order = pageable.getSort().getOrderFor("createdAt");
+                    return order != null
+                            && order.getDirection() == Sort.Direction.DESC;
+                })
+        );
+    }
+
+    @Test
+    void getMyTasks_shouldUseCustomSorting_whenSortParametersAreProvided() {
+        // Arrange
+        String username = "testuser";
+
+        authenticateAs(username);
+
+        Page<Task> taskPage = new PageImpl<>(List.of());
+
+        when(taskRepository.findByUser_Username(
+                eq(username),
+                any(Pageable.class)
+        )).thenReturn(taskPage);
+
+        // Act
+        taskService.getMyTasks(
+                0,
+                10,
+                null,
+                "title",
+                "asc"
+        );
+
+        // Assert
+        ArgumentCaptor<Pageable> pageableCaptor =
+                ArgumentCaptor.forClass(Pageable.class);
+
+        verify(taskRepository).findByUser_Username(
+                eq(username),
+                pageableCaptor.capture()
+        );
+
+        Pageable pageable = pageableCaptor.getValue();
+
+        assertEquals(
+                Sort.Direction.ASC,
+                pageable.getSort().getOrderFor("title").getDirection()
+        );
+    }
+
+    @Test
+    void getMyTasks_shouldThrowBadRequest_whenSortFieldIsInvalid() {
+        // Arrange
+        authenticateAs("testuser");
+
+        // Act & Assert
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.getMyTasks(
+                        0,
+                        10,
+                        null,
+                        "invalidField",
+                        "asc"
+                )
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Invalid sort field", exception.getReason());
+
+        verifyNoInteractions(taskRepository);
+    }
+
+    @Test
+    void getMyTasks_shouldThrowBadRequest_whenSortDirectionIsInvalid() {
+        authenticateAs("testuser");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.getMyTasks(
+                        0, 10, null, "title", "sideways"
+                )
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Invalid sort direction", exception.getReason());
+
+        verifyNoInteractions(taskRepository);
+    }
+
+    @Test
+    void getMyTasks_shouldFilterAndSort_whenCompletedAndSortByAreProvided() {
+        authenticateAs("testuser");
+
+        Page<Task> taskPage = new PageImpl<>(List.of());
+
+        when(taskRepository.findByUser_UsernameAndCompleted(
+                eq("testuser"),
+                eq(true),
+                any(Pageable.class)
+        )).thenReturn(taskPage);
+
+        taskService.getMyTasks(0, 10, true, "title", "asc");
+
+        ArgumentCaptor<Pageable> pageableCaptor =
+                ArgumentCaptor.forClass(Pageable.class);
+
+        verify(taskRepository).findByUser_UsernameAndCompleted(
+                eq("testuser"),
+                eq(true),
+                pageableCaptor.capture()
+        );
+
+        Pageable pageable = pageableCaptor.getValue();
+
+        assertEquals("title", pageable.getSort().getOrderFor("title").getProperty());
+        assertEquals(Sort.Direction.ASC,
+                pageable.getSort().getOrderFor("title").getDirection());
     }
 
 

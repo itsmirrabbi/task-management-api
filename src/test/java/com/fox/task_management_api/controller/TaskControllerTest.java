@@ -273,7 +273,7 @@ class TaskControllerTest {
                 11
         );
 
-        when(taskService.getMyTasks(1, 5))
+        when(taskService.getMyTasks(1, 5, null, "createdAt", "desc"))
                 .thenReturn(taskPage);
 
         mockMvc.perform(get("/tasks")
@@ -289,7 +289,7 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(11))
                 .andExpect(jsonPath("$.totalPages").value(3));
 
-        verify(taskService).getMyTasks(1, 5);
+        verify(taskService).getMyTasks(1, 5, null, "createdAt", "desc");
     }
 
     @Test
@@ -302,7 +302,7 @@ class TaskControllerTest {
                 0
         );
 
-        when(taskService.getMyTasks(0, 10))
+        when(taskService.getMyTasks(0, 10, null, "createdAt", "desc"))
                 .thenReturn(taskPage);
 
         mockMvc.perform(get("/tasks")
@@ -312,7 +312,73 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.size").value(10))
                 .andExpect(jsonPath("$.totalElements").value(0));
 
-        verify(taskService).getMyTasks(0, 10);
+        verify(taskService).getMyTasks(0, 10, null, "createdAt", "desc");
+    }
+
+    @Test
+    void getMyTasks_shouldFilterCompletedTasks() throws Exception {
+
+        LocalDateTime now = LocalDateTime.of(2026, 11, 3, 12, 0);
+
+        TaskResponse task = new TaskResponse(
+                1L,
+                "Learn Spring Boot",
+                "Practice API testing",
+                true,
+                now,
+                now
+        );
+
+        Page<TaskResponse> taskPage = new PageImpl<>(
+                List.of(task),
+                PageRequest.of(0, 10),
+                1
+        );
+
+        when(taskService.getMyTasks(0, 10, true, "createdAt", "desc"))
+                .thenReturn(taskPage);
+
+        mockMvc.perform(get("/tasks")
+                        .param("completed", "true")
+                        .with(user("testuser")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].completed").value(true));
+
+        verify(taskService).getMyTasks(0, 10, true, "createdAt", "desc");
+    }
+
+    @Test
+    void getMyTasks_shouldFilterIncompleteTasks() throws Exception {
+
+        LocalDateTime now = LocalDateTime.of(2026, 11, 3, 12, 0);
+
+        TaskResponse task = new TaskResponse(
+                2L,
+                "Practice Java",
+                "Solve coding problems",
+                false,
+                now,
+                now
+        );
+
+        Page<TaskResponse> taskPage = new PageImpl<>(
+                List.of(task),
+                PageRequest.of(0, 10),
+                1
+        );
+
+        when(taskService.getMyTasks(0, 10, false, "createdAt", "desc"))
+                .thenReturn(taskPage);
+
+        mockMvc.perform(get("/tasks")
+                        .param("completed", "false")
+                        .with(user("testuser")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(2))
+                .andExpect(jsonPath("$.content[0].completed").value(false));
+
+        verify(taskService).getMyTasks(0, 10, false, "createdAt", "desc");
     }
 
     @Test
@@ -376,4 +442,20 @@ class TaskControllerTest {
 
         verifyNoInteractions(taskService);
     }
+
+    @Test
+    void getMyTasks_shouldPassSortingParametersToService() throws Exception {
+        mockMvc.perform(get("/tasks")
+                        .param("completed", "true")
+                        .param("sortBy", "title")
+                        .param("direction", "asc")
+                        .with(user("testuser")))
+                .andExpect(status().isOk());
+
+        verify(taskService).getMyTasks(
+                0, 10, true, "title", "asc"
+        );
+    }
+
+
 }
