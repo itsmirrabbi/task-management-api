@@ -11,12 +11,15 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
 
 @Service
 public class TaskService {
@@ -81,13 +84,74 @@ public class TaskService {
         return toTaskResponse(savedTask);
     }
 
+
     @Transactional(readOnly = true)
     public Page<TaskResponse> getMyTasks(int page, int size) {
+        return getMyTasks(page, size, null, "createdAt", "desc");
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TaskResponse> getMyTasks(
+            int page,
+            int size,
+            Boolean completed) {
+
+        return getMyTasks(page, size, completed, "createdAt", "desc");
+    }
+
+
+    @Transactional(readOnly = true)
+    public Page<TaskResponse> getMyTasks(
+            int page,
+            int size,
+            Boolean completed,
+            String sortBy,
+            String direction) {
+
         String username = getCurrentUsername();
 
-        Pageable pageable = PageRequest.of(page, size);
+        // Allow only valid task fields for sorting
+        if (!List.of("id", "title", "completed", "createdAt", "updatedAt")
+                .contains(sortBy)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid sort field"
+            );
+        }
 
-        return taskRepository.findByUser_Username(username, pageable).map(this::toTaskResponse);
+        Sort.Direction sortDirection;
+
+        try {
+            sortDirection = Sort.Direction.fromString(direction);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid sort direction"
+            );
+        }
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(sortDirection, sortBy)
+        );
+
+        Page<Task> tasks;
+
+        if (completed == null) {
+            tasks = taskRepository.findByUser_Username(
+                    username,
+                    pageable
+            );
+        } else {
+            tasks = taskRepository.findByUser_UsernameAndCompleted(
+                    username,
+                    completed,
+                    pageable
+            );
+        }
+
+        return tasks.map(this::toTaskResponse);
     }
 
     @Transactional
